@@ -1,0 +1,62 @@
+env:
+ JAVA_VERSION: "11"
+ JAVA_DISTRIBUTION: "zulu"
+
+timeout: 300
+
+steps:
+ - label: "ktlint"
+   command: "./gradlew ktlintCheck"
+   plugins:
+     - docker#v3.7.0:
+         image: "azul/zulu-openjdk:11"
+
+ - label: "build"
+   command: "./gradlew assemble"
+   plugins:
+     - docker#v3.7.0:
+         image: "azul/zulu-openjdk:11"
+
+ - label: "plugin test"
+   command: "./gradlew collectUnitTest"
+   plugins:
+     - docker#v3.7.0:
+         image: "azul/zulu-openjdk:11"
+     - docker-compose#v3.7.0:
+         run: docker
+         config:
+           services:
+             docker:
+               image: docker:20.10.7
+               privileged: true
+               ports:
+                 - "5432:5432"
+
+ - label: "publisher test"
+   command: "./gradlew collectUnitTestLibs"
+   plugins:
+     - docker#v3.7.0:
+         image: "azul/zulu-openjdk:11"
+     - docker-compose#v3.7.0:
+         run: docker
+         config:
+           services:
+             docker:
+               image: docker:20.10.7
+               privileged: true
+               ports:
+                 - "5432:5432"
+
+ - label: "sample"
+   command: |
+     cd sample
+     ./gradlew assemble
+     ./gradlew assemble --configuration-cache
+     ./gradlew assemble --configuration-cache
+   matrix:
+     - os: ubuntu
+     - os: macos
+     - os: windows
+   plugins:
+     - docker#v3.7.0:
+         image: "azul/zulu-openjdk:11"
